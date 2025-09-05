@@ -45,46 +45,54 @@ Uma ferramenta completa para atualização e gerenciamento remoto de ambientes P
 ### 🚀 Início Rápido
 
 #### Pré-requisitos
-- Java 17+
-- Maven 3.9+
-- Angular CLI
-- Docker & Docker Compose
+- Node.js 20+
+- npm 9+
 
-#### Instalação
+#### Instalação Automática
+```bash
+git clone https://github.com/OZimbres/VREstranho.git
+cd VREstranho
+./setup.sh
+```
 
+#### Instalação Manual
 1. **Clone o repositório**
 ```bash
 git clone https://github.com/OZimbres/VREstranho.git
 cd VREstranho
 ```
 
-2. **Configure o portal**
+2. **Configure o backend**
 ```bash
-# Backend
 cd portal-backend
 npm install
 npm run dev
-
-# Frontend
-cd ../portal-frontend
-npm install
-ng serve
 ```
 
-3. **Configure o agent**
+3. **Configure o frontend (nova janela)**
+```bash
+cd portal-frontend
+npm install
+npm start
+```
+
+4. **Configure o agent (nova janela)**
 ```bash
 cd agent
 npm install
-npm run build
+npm start
 ```
 
-### 🐳 Docker
+#### 🌐 Acessos
+- **Portal Web**: http://localhost:4200
+- **API Backend**: http://localhost:3000
+- **Login**: admin / admin123
 
-Execute toda a solução com Docker Compose:
-
+#### 🐳 Docker (Alternativo)
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
+*Nota: Docker funciona para frontend, backend local recomendado para desenvolvimento*
 
 ### 📊 Critérios de Avaliação
 
@@ -114,12 +122,15 @@ VREstranho/
 ### 📈 Roadmap
 
 - [x] Estrutura base do projeto
-- [ ] Portal frontend (Angular)
-- [ ] API backend (Node.js)
-- [ ] Agent cross-platform
-- [ ] Sistema de autenticação
-- [ ] Interface de gerenciamento de arquivos
-- [ ] Deploy com Docker
+- [x] Portal frontend (Angular)
+- [x] API backend (Node.js) 
+- [x] Agent cross-platform
+- [x] Sistema de autenticação
+- [x] Interface de gerenciamento de arquivos
+- [x] Comunicação WebSocket real-time
+- [x] Deploy com Docker
+- [x] Documentação completa
+- [x] Testes e validação
 
 ### 🏆 Equipe
 
