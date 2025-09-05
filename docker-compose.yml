@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
-  # Backend API (Java Spring Boot)
+  # Backend API (Node.js Express)
   api:
     build: 
-      context: ./portal-backend-java
+      context: ./portal-backend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
