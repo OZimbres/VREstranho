@@ -1,6 +1,7 @@
 const express = require('express');
 const Database = require('../services/database');
 const { authenticateToken } = require('../middleware/auth');
+const { AGENT_TOKEN } = require('../config/secrets');
 
 const router = express.Router();
 const db = new Database();
@@ -45,7 +46,22 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, hostname, platform, version, ip_address, network_id, store_id } = req.body;
+    const { name, hostname, platform, version, ip_address, network_id, store_id, agentToken } = req.body;
+
+    // Validate agent token
+    if (agentToken !== AGENT_TOKEN) {
+      return res.status(401).json({ error: 'Invalid agent token' });
+    }
+
+    // Validate required fields
+    if (!name || !hostname || !platform || !version) {
+      return res.status(400).json({ error: 'Missing required agent information' });
+    }
+
+    // Validate IP address format
+    if (ip_address && !ip_address.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
+      return res.status(400).json({ error: 'Invalid IP address format' });
+    }
 
     await db.run(`
       INSERT OR REPLACE INTO agents 

@@ -90,8 +90,20 @@ class Database {
 
   async createDefaultAdmin() {
     return new Promise((resolve, reject) => {
-      const defaultPassword = 'admin123';
-      const hashedPassword = bcrypt.hashSync(defaultPassword, 10);
+      // Use environment variable for default password, or generate one
+      let defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+      
+      if (!defaultPassword) {
+        if (process.env.NODE_ENV === 'production') {
+          reject(new Error('DEFAULT_ADMIN_PASSWORD must be set in production environment'));
+          return;
+        }
+        // Generate random password for development
+        defaultPassword = require('crypto').randomBytes(8).toString('hex');
+        console.log(`⚠️  Generated admin password: ${defaultPassword}`);
+      }
+
+      const hashedPassword = bcrypt.hashSync(defaultPassword, 12);
 
       this.db.run(
         `INSERT OR IGNORE INTO users (username, password_hash, email, role) 
@@ -101,7 +113,13 @@ class Database {
           if (err) {
             reject(err);
           } else {
-            console.log('✅ Default admin user created (username: admin, password: admin123)');
+            if (this.changes > 0) {
+              console.log('✅ Default admin user created');
+              console.log(`📧 Email: admin@vr.com.br`);
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`🔑 Password: ${defaultPassword}`);
+              }
+            }
             resolve();
           }
         }

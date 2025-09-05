@@ -51,8 +51,12 @@ class VRAgent {
 
   connect() {
     try {
+      // Add authentication token to connection URL
+      const agentToken = process.env.AGENT_TOKEN || 'vr-agent-secret-2024';
+      const connectionUrl = `${this.serverUrl}?type=agent&agentToken=${agentToken}`;
+      
       console.log(`🔌 Connecting to server: ${this.serverUrl}`);
-      this.ws = new WebSocket(this.serverUrl);
+      this.ws = new WebSocket(connectionUrl);
 
       this.ws.on('open', () => {
         console.log('✅ Connected to VR Estranho Portal');
@@ -97,6 +101,7 @@ class VRAgent {
         platform: this.systemInfo.platform,
         version: this.version,
         ip_address: this.getLocalIP(),
+        agentToken: process.env.AGENT_TOKEN || 'vr-agent-secret-2024',
         ...this.systemInfo
       }
     };
@@ -164,16 +169,46 @@ class VRAgent {
 
   handleFileListRequest(payload) {
     const { path: requestPath, requestId } = payload;
-    const targetPath = requestPath || '/';
-
+    let targetPath = requestPath || './';
+    
     try {
+      // Normalize and validate path
+      targetPath = path.resolve(targetPath);
+      
+      // Prevent access to sensitive directories
+      const blockedPaths = ['/etc', '/proc', '/sys', '/dev', '/boot', '/root'];
+      if (blockedPaths.some(blocked => targetPath.startsWith(blocked))) {
+        throw new Error('Access to system directories is not allowed');
+      }
+      
+      // Ensure path exists and is readable
+      if (!fs.existsSync(targetPath)) {
+        throw new Error('Path does not exist');
+      }
+      
+      const stats = fs.statSync(targetPath);
+      if (!stats.isDirectory()) {
+        throw new Error('Path is not a directory');
+      }
+
       const files = fs.readdirSync(targetPath, { withFileTypes: true });
-      const fileList = files.map(file => ({
-        name: file.name,
-        type: file.isDirectory() ? 'directory' : 'file',
-        size: file.isFile() ? fs.statSync(path.join(targetPath, file.name)).size : null,
-        lastModified: fs.statSync(path.join(targetPath, file.name)).mtime
-      }));
+      const fileList = files.map(file => {
+        const filePath = path.join(targetPath, file.name);
+        let fileStats;
+        try {
+          fileStats = fs.statSync(filePath);
+        } catch (e) {
+          // Skip files we can't stat
+          return null;
+        }
+        
+        return {
+          name: file.name,
+          type: file.isDirectory() ? 'directory' : 'file',
+          size: file.isFile() ? fileStats.size : null,
+          lastModified: fileStats.mtime
+        };
+      }).filter(file => file !== null);
 
       this.sendMessage({
         type: 'file_list_response',
@@ -194,8 +229,34 @@ class VRAgent {
     const { targetPath, fileName, fileData, operationId } = payload;
     
     try {
-      const fullPath = path.join(targetPath, fileName);
+      // Validate and sanitize file name
+      if (!fileName || /[<>:"|?*]/.test(fileName)) {
+        throw new Error('Invalid file name');
+      }
+      
+      // Validate target path
+      const normalizedPath = path.resolve(targetPath);
+      const blockedPaths = ['/etc', '/proc', '/sys', '/dev', '/boot', '/root'];
+      if (blockedPaths.some(blocked => normalizedPath.startsWith(blocked))) {
+        throw new Error('Upload to system directories is not allowed');
+      }
+      
+      const fullPath = path.join(normalizedPath, fileName);
+      
+      // Ensure we're not overwriting critical files
+      if (fs.existsSync(fullPath)) {
+        const stats = fs.statSync(fullPath);
+        if (!stats.isFile()) {
+          throw new Error('Cannot overwrite non-file');
+        }
+      }
+      
       const buffer = Buffer.from(fileData, 'base64');
+      
+      // Validate file size (additional check)
+      if (buffer.length > 100 * 1024 * 1024) { // 100MB
+        throw new Error('File too large');
+      }
       
       // Create directory if it doesn't exist
       fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -230,12 +291,32 @@ class VRAgent {
     const { filePath, operationId } = payload;
 
     try {
-      if (fs.existsSync(filePath)) {
-        const stats = fs.statSync(filePath);
+      // Validate and normalize path
+      const normalizedPath = path.resolve(filePath);
+      
+      // Prevent deletion of system files and directories
+      const blockedPaths = ['/etc', '/proc', '/sys', '/dev', '/boot', '/root', '/bin', '/sbin', '/usr/bin', '/usr/sbin'];
+      if (blockedPaths.some(blocked => normalizedPath.startsWith(blocked))) {
+        throw new Error('Deletion of system files/directories is not allowed');
+      }
+      
+      // Additional safety check - don't delete if path contains sensitive patterns
+      if (normalizedPath.includes('passwd') || normalizedPath.includes('shadow') || 
+          normalizedPath.includes('sudoers') || normalizedPath.includes('.ssh')) {
+        throw new Error('Cannot delete sensitive files');
+      }
+
+      if (fs.existsSync(normalizedPath)) {
+        const stats = fs.statSync(normalizedPath);
         if (stats.isDirectory()) {
-          fs.rmSync(filePath, { recursive: true });
+          // Only allow deletion of empty directories or specific application directories
+          const files = fs.readdirSync(normalizedPath);
+          if (files.length > 0) {
+            throw new Error('Cannot delete non-empty directories');
+          }
+          fs.rmdirSync(normalizedPath);
         } else {
-          fs.unlinkSync(filePath);
+          fs.unlinkSync(normalizedPath);
         }
 
         this.sendMessage({
@@ -243,11 +324,11 @@ class VRAgent {
           payload: {
             operationId,
             status: 'completed',
-            message: `File/directory ${filePath} deleted successfully`
+            message: `File/directory ${path.basename(normalizedPath)} deleted successfully`
           }
         });
 
-        console.log(`🗑️  Deleted: ${filePath}`);
+        console.log(`🗑️  Deleted: ${normalizedPath}`);
       } else {
         throw new Error('File not found');
       }
@@ -268,8 +349,26 @@ class VRAgent {
     const { command, args, operationId } = payload;
 
     try {
-      const fullCommand = args ? `${command} ${args.join(' ')}` : command;
-      const result = execSync(fullCommand, { encoding: 'utf8', timeout: 30000 });
+      // Additional validation on agent side
+      const allowedCommands = ['ls', 'pwd', 'whoami', 'date', 'uptime', 'df', 'free', 'ps', 'netstat', 'systemctl', 'service', 'cat', 'head', 'tail'];
+      
+      if (!allowedCommands.includes(command)) {
+        throw new Error(`Command '${command}' is not allowed on this agent`);
+      }
+
+      // Sanitize arguments - remove any shell metacharacters
+      const sanitizedArgs = args ? args.filter(arg => !/[;&|`$(){}[\]\\<>]/.test(arg)) : [];
+      
+      // Construct command safely
+      const fullCommand = sanitizedArgs.length > 0 ? `${command} ${sanitizedArgs.join(' ')}` : command;
+      
+      // Execute with restricted environment and timeout
+      const result = execSync(fullCommand, { 
+        encoding: 'utf8', 
+        timeout: 10000, // Reduced timeout
+        env: { PATH: process.env.PATH }, // Minimal environment
+        maxBuffer: 1024 * 1024 // 1MB output limit
+      });
 
       this.sendMessage({
         type: 'file_operation_result',
@@ -277,7 +376,7 @@ class VRAgent {
           operationId,
           status: 'completed',
           message: 'Command executed successfully',
-          output: result
+          output: result.substring(0, 10000) // Limit output size
         }
       });
 
@@ -289,7 +388,7 @@ class VRAgent {
         payload: {
           operationId,
           status: 'failed',
-          error: error.message
+          error: 'Command execution failed: ' + error.message.substring(0, 200)
         }
       });
     }
@@ -355,23 +454,27 @@ class VRAgent {
   }
 
   handleRestartAgent(payload) {
-    const { operationId } = payload;
+    const { operationId, requestedBy, timestamp } = payload;
 
-    console.log('🔄 Restarting agent...');
+    console.log(`🔄 Restart requested by: ${requestedBy} at ${timestamp}`);
     
     this.sendMessage({
       type: 'file_operation_result',
       payload: {
         operationId,
         status: 'completed',
-        message: 'Agent restart initiated'
+        message: `Agent restart initiated by ${requestedBy}`
       }
     });
 
-    // Close connection and restart
+    // Graceful shutdown with delay
+    console.log('🛑 Agent shutting down for restart in 3 seconds...');
     setTimeout(() => {
+      if (this.ws) {
+        this.ws.close();
+      }
       process.exit(0);
-    }, 1000);
+    }, 3000);
   }
 
   sendMessage(message) {
