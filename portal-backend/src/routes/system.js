@@ -1,12 +1,13 @@
 const express = require('express');
 const Database = require('../services/database');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
+const { validateCommand } = require('../middleware/validation');
 
 const router = express.Router();
 const db = new Database();
 
 // Execute command on agent
-router.post('/execute/:agentId', authenticateToken, async (req, res) => {
+router.post('/execute/:agentId', authenticateToken, requireRole(['admin', 'operator']), validateCommand, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { command, args = [] } = req.body;
@@ -151,9 +152,18 @@ router.get('/info/:agentId', authenticateToken, async (req, res) => {
 });
 
 // Restart agent service
-router.post('/restart/:agentId', authenticateToken, async (req, res) => {
+router.post('/restart/:agentId', authenticateToken, requireRole(['admin']), async (req, res) => {
   try {
     const { agentId } = req.params;
+    const { confirmRestart } = req.body;
+
+    // Require explicit confirmation for restart operation
+    if (!confirmRestart) {
+      return res.status(400).json({ 
+        error: 'Restart confirmation required',
+        message: 'Please include confirmRestart: true in request body'
+      });
+    }
 
     // Verify agent exists
     const agents = await db.query('SELECT * FROM agents WHERE id = ?', [agentId]);
@@ -161,17 +171,19 @@ router.post('/restart/:agentId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    // Log operation
+    // Log operation with user info
     const operation = await db.run(
-      'INSERT INTO file_operations (agent_id, operation_type, file_path, user_id) VALUES (?, ?, ?, ?)',
-      [agentId, 'restart', 'agent_service', req.user.id]
+      'INSERT INTO file_operations (agent_id, operation_type, file_path, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+      [agentId, 'restart', `agent_service_by_${req.user.username}`, req.user.id, new Date().toISOString()]
     );
 
     // Send restart command to agent
     const wsService = req.app.get('wsService');
     const message = {
       type: 'restart_agent',
-      operationId: operation.id
+      operationId: operation.id,
+      requestedBy: req.user.username,
+      timestamp: new Date().toISOString()
     };
 
     const sent = wsService?.sendToAgent(agentId, message);
@@ -185,11 +197,12 @@ router.post('/restart/:agentId', authenticateToken, async (req, res) => {
 
     res.json({
       message: 'Agent restart initiated',
-      operationId: operation.id
+      operationId: operation.id,
+      warning: 'Agent will disconnect and attempt to reconnect automatically'
     });
   } catch (error) {
     console.error('Error restarting agent:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to initiate agent restart' });
   }
 });
 

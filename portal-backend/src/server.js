@@ -13,6 +13,7 @@ const systemRoutes = require('./routes/system');
 
 const Database = require('./services/database');
 const WebSocketService = require('./services/websocket');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 class Server {
   constructor() {
@@ -39,13 +40,33 @@ class Server {
     // Rate limiting
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100 // limit each IP to 100 requests per windowMs
+      max: 100, // limit each IP to 100 requests per windowMs
+      message: {
+        error: 'Too many requests',
+        details: 'Rate limit exceeded. Please try again later.'
+      },
+      standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+      legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     });
     this.app.use('/api/', limiter);
 
     // Body parsing
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(express.json({ 
+      limit: '10mb',
+      verify: (req, res, buf) => {
+        try {
+          JSON.parse(buf);
+        } catch (e) {
+          res.status(400).json({ error: 'Invalid JSON format' });
+          throw new Error('Invalid JSON');
+        }
+      }
+    }));
+    this.app.use(express.urlencoded({ 
+      extended: true, 
+      limit: '10mb',
+      parameterLimit: 50 // Limit URL parameters
+    }));
   }
 
   setupRoutes() {
@@ -60,14 +81,16 @@ class Server {
       res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        version: '1.0.0'
       });
     });
 
     // 404 handler
-    this.app.use((req, res) => {
-      res.status(404).json({ error: 'Route not found' });
-    });
+    this.app.use(notFoundHandler);
+    
+    // Error handler (must be last)
+    this.app.use(errorHandler);
   }
 
   setupWebSocket() {

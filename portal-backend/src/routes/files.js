@@ -4,6 +4,7 @@ const path = require('path');
 const Database = require('../services/database');
 const WebSocketService = require('../services/websocket');
 const { authenticateToken } = require('../middleware/auth');
+const { validateFilePath, validateFileUpload } = require('../middleware/validation');
 
 const router = express.Router();
 const db = new Database();
@@ -16,7 +17,7 @@ const upload = multer({
 });
 
 // Get file list from agent
-router.get('/list/:agentId', authenticateToken, async (req, res) => {
+router.get('/list/:agentId', authenticateToken, validateFilePath, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { path: remotePath = '/' } = req.query;
@@ -57,7 +58,7 @@ router.get('/list/:agentId', authenticateToken, async (req, res) => {
 });
 
 // Download file from agent
-router.get('/download/:agentId', authenticateToken, async (req, res) => {
+router.get('/download/:agentId', authenticateToken, validateFilePath, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { path: filePath } = req.query;
@@ -91,7 +92,7 @@ router.get('/download/:agentId', authenticateToken, async (req, res) => {
 });
 
 // Upload file to agent
-router.post('/upload/:agentId', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/upload/:agentId', authenticateToken, upload.single('file'), validateFileUpload, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { path: targetPath } = req.body;
@@ -145,7 +146,7 @@ router.post('/upload/:agentId', authenticateToken, upload.single('file'), async 
 });
 
 // Delete file on agent
-router.delete('/delete/:agentId', authenticateToken, async (req, res) => {
+router.delete('/delete/:agentId', authenticateToken, validateFilePath, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { path: filePath } = req.body;
