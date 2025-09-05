@@ -1,0 +1,94 @@
+<div class="dashboard-container">
+  <h1>Dashboard - VR Estranho</h1>
+  
+  <mat-grid-list cols="4" rowHeight="150px" gutterSize="20px">
+    <!-- Total Agents -->
+    <mat-grid-tile colspan="1" rowspan="1">
+      <mat-card class="dashboard-card">
+        <mat-card-header>
+          <div mat-card-avatar class="card-avatar total-agents">
+            <mat-icon>devices</mat-icon>
+          </div>
+          <mat-card-title>Agentes Totais</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-number">{{ stats.totalAgents }}</div>
+        </mat-card-content>
+      </mat-card>
+    </mat-grid-tile>
+
+    <!-- Online Agents -->
+    <mat-grid-tile colspan="1" rowspan="1">
+      <mat-card class="dashboard-card">
+        <mat-card-header>
+          <div mat-card-avatar class="card-avatar online-agents">
+            <mat-icon>cloud_done</mat-icon>
+          </div>
+          <mat-card-title>Agentes Online</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-number">{{ stats.onlineAgents }}</div>
+          <mat-progress-bar mode="determinate" [value]="onlinePercentage" class="mt-2"></mat-progress-bar>
+          <small>{{ onlinePercentage | number:'1.0-0' }}% dos agentes</small>
+        </mat-card-content>
+      </mat-card>
+    </mat-grid-tile>
+
+    <!-- Total Operations -->
+    <mat-grid-tile colspan="1" rowspan="1">
+      <mat-card class="dashboard-card">
+        <mat-card-header>
+          <div mat-card-avatar class="card-avatar total-operations">
+            <mat-icon>history</mat-icon>
+          </div>
+          <mat-card-title>Operações</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-number">{{ stats.totalOperations }}</div>
+        </mat-card-content>
+      </mat-card>
+    </mat-grid-tile>
+
+    <!-- Success Rate -->
+    <mat-grid-tile colspan="1" rowspan="1">
+      <mat-card class="dashboard-card">
+        <mat-card-header>
+          <div mat-card-avatar class="card-avatar success-rate">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <mat-card-title>Taxa de Sucesso</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-number">{{ successPercentage | number:'1.0-0' }}%</div>
+          <mat-progress-bar mode="determinate" [value]="successPercentage" class="mt-2"></mat-progress-bar>
+          <small>{{ stats.successfulOperations }}/{{ stats.totalOperations }} operações</small>
+        </mat-card-content>
+      </mat-card>
+    </mat-grid-tile>
+  </mat-grid-list>
+
+  <!-- Recent Operations -->
+  <mat-card class="recent-operations mt-2">
+    <mat-card-header>
+      <mat-card-title>Operações Recentes</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="operations-list">
+        <div *ngFor="let operation of recentOperations" class="operation-item">
+          <div class="operation-info">
+            <div class="operation-agent">{{ operation.agentName }}</div>
+            <div class="operation-type">{{ operation.operation }}</div>
+            <div class="operation-time">{{ operation.timestamp | date:'short' }}</div>
+          </div>
+          <div class="operation-status">
+            <mat-chip 
+              [color]="operation.status === 'completed' ? 'primary' : operation.status === 'in-progress' ? 'accent' : 'warn'"
+              selected>
+              {{ operation.status }}
+            </mat-chip>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

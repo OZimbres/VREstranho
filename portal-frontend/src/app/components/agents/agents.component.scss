@@ -1,0 +1,82 @@
+.agents-container {
+  padding: 20px;
+  max-width: 1400px;
+}
+
+.agents-table {
+  margin-top: 20px;
+}
+
+.agent-name {
+  display: flex;
+  align-items: center;
+  
+  mat-icon {
+    margin-right: 8px;
+  }
+}
+
+.platform-info {
+  div {
+    font-weight: 500;
+  }
+  
+  small {
+    color: #666;
+    font-size: 0.8em;
+  }
+}
+
+.ip-address {
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.last-seen {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.no-agents {
+  padding: 40px 20px;
+  color: #666;
+  
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+  }
+  
+  p {
+    margin: 8px 0;
+    font-size: 1.1em;
+  }
+  
+  small {
+    color: #999;
+  }
+}
+
+.warn-action {
+  color: #f44336 !important;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.mt-2 {
+  margin-top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
