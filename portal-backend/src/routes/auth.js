@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Database = require('../services/database');
 const { JWT_SECRET } = require('../config/secrets');
+const { usernameValidation, passwordValidation, emailValidation, handleValidationErrors } = require('../middleware/validation');
 
 const router = express.Router();
 const db = new Database();
@@ -66,7 +67,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Register endpoint (for creating new users)
-router.post('/register', async (req, res) => {
+router.post('/register', [usernameValidation, passwordValidation, emailValidation, handleValidationErrors], async (req, res) => {
   try {
     const { username, password, email, role = 'user' } = req.body;
 

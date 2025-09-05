@@ -14,6 +14,8 @@ const systemRoutes = require('./routes/system');
 const Database = require('./services/database');
 const WebSocketService = require('./services/websocket');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { sanitizeInputs } = require('./middleware/sanitization');
+const { provideCSRFToken, validateCSRFToken } = require('./middleware/csrf');
 
 class Server {
   constructor() {
@@ -31,10 +33,28 @@ class Server {
 
   setupMiddleware() {
     // Security
-    this.app.use(helmet());
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "ws:", "wss:"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false
+    }));
     this.app.use(cors({
       origin: process.env.FRONTEND_URL || 'http://localhost:4200',
-      credentials: true
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+      exposedHeaders: ['X-CSRF-Token']
     }));
 
     // Rate limiting
@@ -49,6 +69,9 @@ class Server {
       legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     });
     this.app.use('/api/', limiter);
+
+    // Input sanitization (before parsing)
+    this.app.use(sanitizeInputs);
 
     // Body parsing
     this.app.use(express.json({ 
@@ -67,14 +90,17 @@ class Server {
       limit: '10mb',
       parameterLimit: 50 // Limit URL parameters
     }));
+
+    // CSRF protection (after authentication)
+    this.app.use(provideCSRFToken);
   }
 
   setupRoutes() {
-    // API Routes
+    // API Routes with CSRF protection for state-changing operations
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/agents', agentRoutes);
-    this.app.use('/api/files', fileRoutes);
-    this.app.use('/api/system', systemRoutes);
+    this.app.use('/api/files', validateCSRFToken, fileRoutes);
+    this.app.use('/api/system', validateCSRFToken, systemRoutes);
 
     // Health check
     this.app.get('/api/health', (req, res) => {
@@ -83,6 +109,14 @@ class Server {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         version: '1.0.0'
+      });
+    });
+
+    // CSRF token endpoint
+    this.app.get('/api/csrf-token', (req, res) => {
+      res.json({
+        csrfToken: res.locals.csrfToken,
+        timestamp: new Date().toISOString()
       });
     });
 
