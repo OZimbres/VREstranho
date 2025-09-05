@@ -67,7 +67,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Register endpoint (for creating new users)
-router.post('/register', [usernameValidation, passwordValidation, emailValidation, handleValidationErrors], async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { username, password, email, role = 'user' } = req.body;
 

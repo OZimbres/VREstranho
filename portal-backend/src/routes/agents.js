@@ -42,8 +42,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-const { AGENT_TOKEN } = require('../config/secrets');
-
 // Update agent info (typically called by the agent itself)
 router.put('/:id', async (req, res) => {
   try {
