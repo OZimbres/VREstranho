@@ -1,0 +1,118 @@
+<div class="agents-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>devices</mat-icon>
+        Agentes PDV
+      </mat-card-title>
+      <mat-card-subtitle>
+        Gerencie e monitore todos os agentes instalados nos PDVs
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <table mat-table [dataSource]="agents" class="agents-table full-width">
+        
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let agent">
+            <div class="agent-name">
+              <mat-icon [matBadge]="agent.status === 'online' ? '●' : '●'" 
+                        [matBadgeColor]="agent.status === 'online' ? 'primary' : 'warn'"
+                        matBadgeSize="small">{{ getPlatformIcon(agent.platform) }}</mat-icon>
+              <span class="ml-2">{{ agent.name }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Hostname Column -->
+        <ng-container matColumnDef="hostname">
+          <th mat-header-cell *matHeaderCellDef>Hostname</th>
+          <td mat-cell *matCellDef="let agent">{{ agent.hostname }}</td>
+        </ng-container>
+
+        <!-- Platform Column -->
+        <ng-container matColumnDef="platform">
+          <th mat-header-cell *matHeaderCellDef>Plataforma</th>
+          <td mat-cell *matCellDef="let agent">
+            <div class="platform-info">
+              <div>{{ agent.platform }}</div>
+              <small>v{{ agent.version }}</small>
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let agent">
+            <mat-chip [color]="agent.status === 'online' ? 'primary' : 'warn'" selected>
+              <mat-icon>{{ getStatusIcon(agent.status) }}</mat-icon>
+              {{ agent.status === 'online' ? 'Online' : 'Offline' }}
+            </mat-chip>
+          </td>
+        </ng-container>
+
+        <!-- Last Seen Column -->
+        <ng-container matColumnDef="last_seen">
+          <th mat-header-cell *matHeaderCellDef>Última Conexão</th>
+          <td mat-cell *matCellDef="let agent">
+            <div class="last-seen">
+              {{ agent.last_seen | date:'short' }}
+            </div>
+          </td>
+        </ng-container>
+
+        <!-- IP Address Column -->
+        <ng-container matColumnDef="ip_address">
+          <th mat-header-cell *matHeaderCellDef>IP</th>
+          <td mat-cell *matCellDef="let agent">
+            <code class="ip-address">{{ agent.ip_address }}</code>
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let agent">
+            <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Agent actions">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #actionsMenu="matMenu">
+              <button mat-menu-item (click)="onAgentAction(agent, 'view')">
+                <mat-icon>visibility</mat-icon>
+                <span>Ver Detalhes</span>
+              </button>
+              <button mat-menu-item (click)="onAgentAction(agent, 'files')" [disabled]="agent.status !== 'online'">
+                <mat-icon>folder</mat-icon>
+                <span>Gerenciar Arquivos</span>
+              </button>
+              <button mat-menu-item (click)="onAgentAction(agent, 'system')" [disabled]="agent.status !== 'online'">
+                <mat-icon>settings</mat-icon>
+                <span>Sistema</span>
+              </button>
+              <button mat-menu-item (click)="onAgentAction(agent, 'restart')" [disabled]="agent.status !== 'online'">
+                <mat-icon>refresh</mat-icon>
+                <span>Reiniciar</span>
+              </button>
+              <button mat-menu-item (click)="onAgentAction(agent, 'delete')" class="warn-action">
+                <mat-icon>delete</mat-icon>
+                <span>Remover</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+      
+      <div *ngIf="agents.length === 0" class="no-agents text-center mt-2">
+        <mat-icon>devices_other</mat-icon>
+        <p>Nenhum agente encontrado</p>
+        <small>Os agentes aparecerão aqui quando se conectarem ao portal</small>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

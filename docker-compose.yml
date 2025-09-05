@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Backend API
+  api:
+    build: 
+      context: ./portal-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/app/data/database.sqlite
+    volumes:
+      - api_data:/app/data
+    networks:
+      - vr-network
+
+  # Frontend Portal
+  frontend:
+    build:
+      context: ./portal-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+    environment:
+      - API_URL=http://api:3000
+    networks:
+      - vr-network
+
+volumes:
+  api_data:
+
+networks:
+  vr-network:
+    driver: bridge

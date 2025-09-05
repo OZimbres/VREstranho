@@ -1,0 +1,160 @@
+<div class="files-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>folder</mat-icon>
+        Gerenciamento de Arquivos
+      </mat-card-title>
+      <mat-card-subtitle>
+        Gerencie arquivos remotamente nos PDVs
+      </mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <!-- Agent Selection -->
+      <mat-form-field appearance="outline" class="full-width mb-2">
+        <mat-label>Selecionar Agente PDV</mat-label>
+        <mat-select [(value)]="selectedAgentId" (selectionChange)="onAgentChange()">
+          <mat-option *ngFor="let agent of agents" 
+                      [value]="agent.id" 
+                      [disabled]="agent.status !== 'online'">
+            <div class="agent-option">
+              <mat-icon [class.online]="agent.status === 'online'" 
+                        [class.offline]="agent.status !== 'online'">
+                {{ agent.status === 'online' ? 'cloud_done' : 'cloud_off' }}
+              </mat-icon>
+              {{ agent.name }}
+              <span class="agent-status">({{ agent.status }})</span>
+            </div>
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- File Browser -->
+      <div *ngIf="selectedAgentId" class="file-browser">
+        <!-- Breadcrumb -->
+        <div class="breadcrumb">
+          <button mat-button (click)="navigateUp()" [disabled]="currentPath === '/' || isLoading">
+            <mat-icon>arrow_back</mat-icon>
+            Voltar
+          </button>
+          <span class="current-path">{{ currentPath }}</span>
+        </div>
+
+        <!-- Loading Bar -->
+        <mat-progress-bar *ngIf="isLoading" mode="indeterminate"></mat-progress-bar>
+
+        <!-- File Actions -->
+        <div class="file-actions" *ngIf="canManageFiles">
+          <button mat-raised-button color="primary" [disabled]="isLoading">
+            <mat-icon>file_upload</mat-icon>
+            Upload Arquivo
+          </button>
+          <button mat-raised-button [disabled]="isLoading">
+            <mat-icon>create_new_folder</mat-icon>
+            Nova Pasta
+          </button>
+          <button mat-raised-button [disabled]="isLoading">
+            <mat-icon>refresh</mat-icon>
+            Atualizar
+          </button>
+        </div>
+
+        <!-- File Table -->
+        <table mat-table [dataSource]="files" class="files-table full-width mt-2" *ngIf="!isLoading">
+          
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let file">
+              <div class="file-name" 
+                   [class.clickable]="file.type === 'directory'"
+                   (click)="file.type === 'directory' && navigateToDirectory(file)">
+                <mat-icon>{{ getFileIcon(file) }}</mat-icon>
+                <span class="ml-2">{{ file.name }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Type Column -->
+          <ng-container matColumnDef="type">
+            <th mat-header-cell *matHeaderCellDef>Tipo</th>
+            <td mat-cell *matCellDef="let file">
+              <span class="file-type">
+                {{ file.type === 'directory' ? 'Pasta' : 'Arquivo' }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Size Column -->
+          <ng-container matColumnDef="size">
+            <th mat-header-cell *matHeaderCellDef>Tamanho</th>
+            <td mat-cell *matCellDef="let file">
+              {{ formatFileSize(file.size) }}
+            </td>
+          </ng-container>
+
+          <!-- Last Modified Column -->
+          <ng-container matColumnDef="lastModified">
+            <th mat-header-cell *matHeaderCellDef>Modificado</th>
+            <td mat-cell *matCellDef="let file">
+              {{ file.lastModified | date:'medium' }}
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let file">
+              <button mat-icon-button [matMenuTriggerFor]="fileActionsMenu" 
+                      [disabled]="!canManageFiles">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #fileActionsMenu="matMenu">
+                <button mat-menu-item (click)="onFileAction(file, 'download')" 
+                        *ngIf="file.type === 'file'">
+                  <mat-icon>file_download</mat-icon>
+                  <span>Download</span>
+                </button>
+                <button mat-menu-item (click)="onFileAction(file, 'edit')" 
+                        *ngIf="file.type === 'file'">
+                  <mat-icon>edit</mat-icon>
+                  <span>Editar</span>
+                </button>
+                <button mat-menu-item (click)="onFileAction(file, 'rename')">
+                  <mat-icon>drive_file_rename_outline</mat-icon>
+                  <span>Renomear</span>
+                </button>
+                <button mat-menu-item (click)="onFileAction(file, 'copy')">
+                  <mat-icon>file_copy</mat-icon>
+                  <span>Copiar</span>
+                </button>
+                <button mat-menu-item (click)="onFileAction(file, 'delete')" class="warn-action">
+                  <mat-icon>delete</mat-icon>
+                  <span>Excluir</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <!-- No Files Message -->
+        <div *ngIf="files.length === 0 && !isLoading" class="no-files text-center mt-2">
+          <mat-icon>folder_open</mat-icon>
+          <p>Pasta vazia</p>
+          <small>Nenhum arquivo encontrado neste diretório</small>
+        </div>
+      </div>
+
+      <!-- No Agent Selected -->
+      <div *ngIf="!selectedAgentId" class="no-agent-selected text-center">
+        <mat-icon>devices_other</mat-icon>
+        <p>Selecione um agente para gerenciar arquivos</p>
+        <small>Apenas agentes online podem ter seus arquivos gerenciados</small>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
