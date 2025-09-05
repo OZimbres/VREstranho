@@ -1,17 +1,18 @@
 version: '3.8'
 
 services:
-  # Backend API
+  # Backend API (Java Spring Boot)
   api:
     build: 
-      context: ./portal-backend
+      context: ./portal-backend-java
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DB_PATH=/app/data/database.sqlite
+      - SERVER_PORT=3000
+      - DB_PATH=data/database.sqlite
+      - JWT_SECRET=VlJFc3RyYW5ob1NlY3JldEtleTIwMjRIYWNrYXRob25WZXJ5TG9uZ1NlY3JldEtleUZvckpXVA==
+      - FRONTEND_URL=http://localhost:4200
     volumes:
       - api_data:/app/data
     networks:

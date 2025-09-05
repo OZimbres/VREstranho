@@ -13,7 +13,7 @@ Uma ferramenta completa para atualização e gerenciamento remoto de ambientes P
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  Portal Web     │    │   Backend API   │    │  Agent (PDV)    │
-│  (Angular)      │◄──►│   (Node.js)     │◄──►│ (Cross-platform)│
+│  (Angular)      │◄──►│  (Java Spring)  │◄──►│ (Cross-platform)│
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -21,7 +21,7 @@ Uma ferramenta completa para atualização e gerenciamento remoto de ambientes P
 
 #### Portal (Web Interface)
 - **Frontend**: Angular com interface responsiva
-- **Backend**: Node.js/Express com API RESTful
+- **Backend**: Java Spring Boot com API RESTful e WebSocket
 - **Database**: SQLite para simplicidade (pode ser escalado)
 - **Docker**: Containerização completa
 
@@ -45,7 +45,8 @@ Uma ferramenta completa para atualização e gerenciamento remoto de ambientes P
 ### 🚀 Início Rápido
 
 #### Pré-requisitos
-- Node.js 18+
+- Java 17+
+- Maven 3.9+
 - Angular CLI
 - Docker & Docker Compose
 
